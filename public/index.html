@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>地方口述史事件年表</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>地方口述史事件年表</h1>
+    <span class="sub" id="versionTag">加载中…</span>
+    <span class="spacer"></span>
+    <a class="muted" href="/editor">编辑者入口</a>
+  </header>
+
+  <main class="container">
+    <div id="message"></div>
+    <div id="chronicle" class="grid2" style="display:none">
+      <section>
+        <div class="card">
+          <h2>年表（按发布时确定的先后排列）</h2>
+          <p class="muted" id="caveat"></p>
+          <div class="timeline" id="timeline"></div>
+        </div>
+      </section>
+      <section>
+        <div class="card">
+          <h2>事件间「先于」关系</h2>
+          <div id="relations"></div>
+        </div>
+        <div class="card">
+          <h2>关于日期</h2>
+          <p class="muted">
+            年、月精度的主张表示一段覆盖区间（如「1958 年」覆盖 1958-01-01 至 1958-12-31）。
+            发布时编辑者为每个事件选定一条主张，系统在区间内确定一个具体日期，
+            使全部「先于」关系成立。下列日期为系统确定的具体日期，原始主张精度与出处随事件标注。
+          </p>
+        </div>
+      </section>
+    </div>
+
+    <div class="card" id="errataCard" style="display:none">
+      <h2>勘误附记</h2>
+      <p class="muted">
+        编辑者对本版年表中的事件或「先于」关系登记的勘误说明与出处（仅展示每项目标的最新生效附记；
+        附记只属于本版，不随后续版本继承）。
+      </p>
+      <div id="errata"></div>
+    </div>
+
+    <div class="card" id="routesCard" style="display:none">
+      <h2>专题脉络路线</h2>
+      <p class="muted">
+        编辑者从已发布年表整理的「先于」脉络：锚点事件按顺序排列，相邻锚点之间展示该版关系图中
+        <b>关系数最少</b>的见证链（链上可能经过中间事件）。每条路线固定于所据版本，不随后续修改或新版发布改变。
+        此处只展示路线涉及的事件与关系。
+      </p>
+      <div id="routeList"></div>
+      <div id="routeDetail" style="margin-top:10px"></div>
+    </div>
+  </main>
+
+  <script src="/visitor.js"></script>
+</body>
+</html>

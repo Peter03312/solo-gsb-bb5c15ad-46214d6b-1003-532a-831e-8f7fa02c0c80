@@ -1,0 +1,18 @@
+{
+  "name": "oral-chronicle",
+  "version": "1.0.0",
+  "description": "地方口述史事件年表：事件、带出处的时间主张、先于关系与不可变发布版本",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "seed": "node src/seed.js",
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "express": "^4.21.2"
+  }
+}

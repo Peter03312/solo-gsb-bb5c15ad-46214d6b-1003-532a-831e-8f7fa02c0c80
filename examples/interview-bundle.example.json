@@ -1,0 +1,46 @@
+{
+  "batchId": "2026-09-dongganqu-fangtan-01",
+  "events": [
+    {
+      "key": "dongyuan-hui",
+      "title": "修水渠动员会",
+      "description": "大队在晒谷场召开修建东干渠动员会。",
+      "claims": [
+        {
+          "precision": "day",
+          "year": 1958,
+          "month": 9,
+          "day": 12,
+          "source": "李宝山口述，2021-07-05 访谈，录音 03 段 08:12",
+          "note": "受访人记得是中秋节后第三天"
+        },
+        {
+          "precision": "year",
+          "year": 1958,
+          "source": "《县水利志》1994 年版，第 87 页",
+          "note": "志书仅记年份"
+        }
+      ]
+    },
+    {
+      "key": "tongshui",
+      "title": "东干渠通水",
+      "description": "东干渠第一期工程通水至公社驻地。",
+      "claims": [
+        {
+          "precision": "month",
+          "year": 1959,
+          "month": 5,
+          "source": "王秀兰口述，2021-08-02 访谈"
+        }
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "earlierKey": "dongyuan-hui",
+      "laterKey": "tongshui",
+      "source": "李宝山、王秀兰二人口述一致"
+    }
+  ]
+}

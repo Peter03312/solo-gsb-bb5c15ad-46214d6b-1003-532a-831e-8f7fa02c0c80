@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>年表编辑台 · 地方口述史</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>年表编辑台</h1>
+    <span class="sub" id="versionTag">—</span>
+    <span class="spacer"></span>
+    <input type="password" id="tokenInput" placeholder="编辑者口令" style="width:150px" />
+    <button class="secondary" id="tokenSave" type="button">保存口令</button>
+    <a class="muted" href="/">← 返回访客年表</a>
+  </header>
+
+  <main class="container">
+    <div id="globalMsg"></div>
+
+    <div class="card">
+      <h2>发布</h2>
+      <p class="muted">
+        为<b>每个</b>事件选定一条主张（允许彼此矛盾的主张并存，但发布只能各选一条）。
+        粗精度日期按覆盖区间计算；只有全部事件都能在区间内取到满足严格先后关系的具体日期，才会生成不可变新版本。
+        校验失败或版本冲突时，上一版本保持不变。
+      </p>
+      <div class="row">
+        <div class="field" style="max-width:220px">
+          <label>编辑者署名</label>
+          <input type="text" id="editorName" placeholder="如：志愿者小王" />
+        </div>
+        <div class="field" style="max-width:320px">
+          <label>版本说明（可选）</label>
+          <input type="text" id="publishNote" placeholder="如：补入修水渠相关事件" />
+        </div>
+        <button id="btnValidate" type="button" class="secondary">校验能否发布</button>
+        <button id="btnPublish" type="button">发布新版本</button>
+      </div>
+      <div id="publishResult" style="margin-top:10px"></div>
+
+      <h3 style="margin-top:16px">预约未来时刻（UTC）自动发布</h3>
+      <p class="muted">
+        选定主张后可指定一个<b>未来 UTC 时刻</b>预约发布。建立预约时即<b>冻结</b>事件、所选主张、
+        「先于」关系、求解日期与当前最新版本号；此后修改草稿或恢复草稿都不改变预约内容。
+        到期前访客只见旧版；到期时若冻结的基准版本号仍是当前最新版本号，才生成不可变新版本，
+        否则预约标记为<b>冲突</b>并保留内容供查看（不自动改基准）。
+      </p>
+      <div class="row">
+        <div class="field" style="max-width:260px">
+          <label>预约发布时刻（UTC，形如 2026-10-02T12:34:00Z）</label>
+          <input type="text" id="scheduleAt" placeholder="2026-10-02T12:34:00Z" />
+        </div>
+        <button id="btnSchedule" type="button" class="secondary">校验并预约发布</button>
+        <button id="btnScheduleNow1m" type="button" class="secondary" style="font-size:13px">填入 1 分钟后</button>
+      </div>
+      <div id="scheduleResult" style="margin-top:10px"></div>
+      <h3 style="margin-top:14px">预约列表</h3>
+      <div id="scheduleList" class="muted">加载中…</div>
+    </div>
+
+    <div class="card">
+      <h2>导入采访整理包（JSON）</h2>
+      <p class="muted">
+        上传或粘贴整理包：含批次标识 <code>batchId</code>、以包内唯一键 <code>key</code> 标记的事件
+        （每事件多条含出处的时间主张），以及按键引用事件的「先于」关系。
+        先<b>只读预览</b>待写入内容与数量；键重复、关系引用缺失、日期或出处非法会列出全部问题并整包拒绝。
+        确认须提交原包、预览返回的内容指纹与草稿修订号；内容被替换、草稿已变化或批次曾成功导入都会冲突且不写入。
+        导入只<b>追加</b>到草稿区（既有草稿、历史快照与访客年表不受影响），仍需选定主张、校验后发布才会公开。
+      </p>
+      <div class="row">
+        <div class="field" style="max-width:280px">
+          <label>选择 JSON 文件</label>
+          <input type="file" id="bundleFile" accept=".json,application/json" />
+        </div>
+      </div>
+      <label style="margin-top:8px">或直接粘贴整理包 JSON</label>
+      <textarea id="bundleText" rows="5" placeholder='{"batchId":"2026-09-fangtan-01","events":[{"key":"a","title":"…","claims":[{"precision":"year","year":1958,"source":"…"}]}],"relations":[]}'></textarea>
+      <div style="margin-top:8px"><button id="btnBundlePreview" type="button" class="secondary">预览导入内容（只读）</button></div>
+      <div id="bundleMsg" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h2>并行编辑会话（两人同时整理：暂存 → 三方合并提交）</h2>
+      <p class="muted">
+        两名编辑者并行整理草稿时，各自<b>开启编辑会话</b>：开启时记录当时的<b>草稿修订号</b>与事件 / 时间主张 /
+        「先于」关系快照（<b>基线，只读</b>；草稿不加锁，对方可继续编辑）。会话内的修改先<b>暂存</b>为一批操作
+        （不直接写草稿）；提交时对照<b>会话基线</b>与<b>当前草稿</b>做三方合并：彼此未触及的对象或字段<b>自动合并</b>；
+        同一字段被双方改成不同值、编辑与删除相撞、关系端点已删除时<b>整次拒绝</b>，逐项列出基线 / 当前值 / 拟提交值
+        供人工重编，<b>不覆盖另一人的改动</b>。成功提交原子应用全部变更并返回新草稿修订号与临时编号 → 正式编号映射；
+        重试同一提交不会重复写入；冲突后请<b>基于最新草稿重开会话</b>。会话内容仅持编辑口令者可见，访客不可见。
+      </p>
+      <div class="row">
+        <button id="btnSessionOpen" type="button">开启新会话（以当前草稿为基线）</button>
+        <button id="btnSessionRefresh" type="button" class="secondary">刷新会话列表</button>
+      </div>
+      <h3 style="margin-top:12px">会话列表</h3>
+      <div id="sessionList" class="muted">加载中…</div>
+      <div id="sessionDetail" style="margin-top:12px"></div>
+      <div id="sessionMsg" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h2>按出处原文撤回公开展示（出处遮盖）</h2>
+      <p class="muted">
+        输入<b>非空的出处文本</b>先<b>只读预览</b>：系统会去除它与库存出处的<b>首尾空白</b>后再比较
+        （手工录入、整包导入、并行会话保存的出处可能带首尾空白；仅首尾空白不同视为同一出处，
+        <b>内部空白与其他文字仍须逐字相同</b>，部分包含不命中）。预览列出它在
+        <b>全部已发布版本</b>的事件主张与「先于」关系中命中的位置与数量（命中处显示库存原文），再携预览时的最新版本号确认。
+        确认后<b>不改写历史快照或草稿</b>：访客读取最新年表、任一历史版本、专题路线与勘误附记时，命中位置的出处统一显示
+        <b>「出处已遮盖」</b>，其余字段与版本号不变；以后发布（含预约发布、恢复后再发布）含同一文本或首尾空白变体的版本也自动遮盖。
+        持口令在版本详情与恢复草稿中仍可查看、使用原文。预览后若已发布新版本，确认会报冲突且不落库。
+      </p>
+      <label>出处原文（首尾空白自动折叠）</label>
+      <textarea id="redactSource" rows="2" placeholder="如：李宝山口述，2021-07-05 访谈，录音 03 段 08:12"></textarea>
+      <div style="margin-top:8px"><button id="btnRedactPreview" type="button" class="secondary">预览命中位置（只读）</button></div>
+      <div id="redactMsg" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h2>勘误附记（对指定已发布版本的事件 / 「先于」关系）</h2>
+      <p class="muted">
+        对某<b>已发布版本</b>中的事件或「先于」关系登记勘误附记（说明 + 出处）。附记<b>只属于目标版</b>：
+        不随草稿恢复或以后发布的版本继承；原快照、求解日期与草稿均不改动。同一目标只展示<b>最新生效附记</b>；
+        替代时系统自动提交你所见的附记号，两人同时替代仅一人成功（冲突方会看到当前生效附记，可再决定），
+        旧附记全部保留供追溯。目标版已撤回时不能登记；撤回后访客不再看到该版及其附记。
+        附记出处沿用「出处遮盖」规则：命中登记的文本对访客显示「出处已遮盖」，此处可查原文与替代链。
+      </p>
+      <div class="row">
+        <div class="field" style="max-width:200px">
+          <label>目标版本</label>
+          <select id="errataVersion"></select>
+        </div>
+        <button id="btnErrataLoad" type="button" class="secondary">加载该版对象与附记</button>
+      </div>
+      <div id="errataTargetPool" style="margin-top:8px"></div>
+      <div id="errataForm" style="display:none;margin-top:8px">
+        <h3 style="font-size:13px">登记附记 → <span id="errataTargetInfo"></span></h3>
+        <div id="errataCurrent"></div>
+        <label style="margin-top:6px">勘误说明（必填）</label>
+        <textarea id="errataNote" rows="2" placeholder="如：该事件日期应为 1958-09-13，口述记忆有误"></textarea>
+        <label style="margin-top:6px">勘误出处（必填，公开显示时沿用出处遮盖规则）</label>
+        <input type="text" id="errataSource" placeholder="如：《县水利志》1994 年版，第 87 页" />
+        <div style="margin-top:8px"><button id="btnErrataSubmit" type="button">登记附记</button></div>
+      </div>
+      <div id="errataMsg" style="margin-top:10px"></div>
+      <h3 style="margin-top:14px">该版附记（编辑者原文，含替代链）</h3>
+      <div id="errataList" class="muted">尚未加载。</div>
+    </div>
+
+    <div class="card">
+      <h2>专题「先于」脉络路线</h2>
+      <p class="muted">
+        从一份<b>已发布年表</b>中按顺序挑选至少两个互异事件作为锚点，填写专题标题，形成一条可公开的脉络路线。
+        相邻锚点必须在该版「先于」关系图中存在<b>有向路径</b>；每段展示一条<b>关系数最少</b>的见证链
+        （长度相同时按关系 ID 序列择小）。任何一段无法连通即<b>拒绝整条路线</b>并指出断点。
+        路线一经建立即固定所据版本、锚点顺序与见证链：之后修改草稿、恢复草稿或发布新版都不改变旧路线。
+        访客只看到路线涉及的事件与关系（出处按遮盖规则显示）；持口令在此查看原文。
+      </p>
+      <div class="row">
+        <div class="field" style="max-width:200px">
+          <label>所据版本</label>
+          <select id="routeVersion"></select>
+        </div>
+        <button id="btnRouteLoadEvents" type="button" class="secondary">加载该版事件</button>
+      </div>
+      <div id="routeEventPool" style="margin-top:8px"></div>
+      <div class="row" style="margin-top:8px">
+        <div class="field" style="max-width:280px">
+          <label>专题标题</label>
+          <input type="text" id="routeTitle" placeholder="如：东干渠建设脉络" />
+        </div>
+        <div class="field" style="max-width:280px">
+          <label>说明（可选）</label>
+          <input type="text" id="routeNote" placeholder="如：纪念日专题" />
+        </div>
+      </div>
+      <h3 style="margin-top:10px">锚点顺序（点击上方事件依次追加；至少两个互异事件）</h3>
+      <div id="routeAnchors"><p class="muted">尚未选择锚点。</p></div>
+      <div style="margin-top:8px">
+        <button id="btnRouteCreate" type="button">校验并建立路线</button>
+        <button id="btnRouteClear" type="button" class="secondary">清空锚点</button>
+      </div>
+      <div id="routeMsg" style="margin-top:10px"></div>
+      <h3 style="margin-top:14px">已建立路线</h3>
+      <div id="routeList" class="muted">加载中…</div>
+    </div>
+
+    <div class="grid2">
+      <section>
+        <div class="card">
+          <h2>事件与时间主张</h2>
+          <div id="eventList"></div>
+
+          <h3 style="margin-top:18px">新增事件</h3>
+          <div class="row">
+            <div class="field"><label>事件标题</label><input type="text" id="newEventTitle" placeholder="如：老桥落成" /></div>
+          </div>
+          <label style="margin-top:8px">事件描述（可选）</label>
+          <textarea id="newEventDesc"></textarea>
+          <div style="margin-top:8px"><button id="btnAddEvent" type="button">添加事件</button></div>
+        </div>
+      </section>
+
+      <section>
+        <div class="card">
+          <h2>「先于」关系</h2>
+          <p class="muted">声明 A 严格先于 B（两个事件不能是同一天）。</p>
+          <div id="relList"></div>
+          <h3 style="margin-top:14px">新增关系</h3>
+          <div class="row">
+            <div class="field"><label>较早事件</label><select id="relEarlier"></select></div>
+            <div style="padding-bottom:6px">先于</div>
+            <div class="field"><label>较晚事件</label><select id="relLater"></select></div>
+          </div>
+          <label style="margin-top:8px">出处（可选）</label>
+          <input type="text" id="relSource" />
+          <div style="margin-top:8px"><button id="btnAddRel" type="button">添加关系</button></div>
+        </div>
+
+        <div class="card">
+          <h2>已发布版本</h2>
+          <p class="muted">历史快照不可变。可从任一已发布版本<b>预览并恢复草稿</b>：原子替换当前草稿（只带回该版被选主张），历史快照与访客年表不受影响；恢复后仍需校验、发布才会公开。</p>
+          <p class="muted">发现某版编年依据错误时可<b>撤回该版</b>：只追加审计记录（快照与版本号不变），访客最新年表指向编号最大的未撤回版，该版详情与引用它的路线对访客隐藏；编辑者在此仍可见原文与撤回原因。发布与预约仍以最高已发布版本号为基准。</p>
+          <div id="versionList" class="muted">加载中…</div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- 版本冲突对话框 -->
+  <dialog id="conflictDialog">
+    <div class="d-head">⚠ 版本冲突：已有更新的发布版本</div>
+    <div class="d-body" id="conflictBody"></div>
+    <div class="d-foot">
+      <button class="secondary" id="conflictCancel" type="button">取消，稍后处理</button>
+      <button id="conflictReload" type="button">刷新到最新版本并重新确认选择</button>
+    </div>
+  </dialog>
+
+  <!-- 从历史版本恢复草稿对话框 -->
+  <dialog id="restoreDialog">
+    <div class="d-head" style="background:var(--warn-bg)">↩ 预览并从已发布版本恢复草稿</div>
+    <div class="d-body" id="restoreBody">加载预览中…</div>
+    <div class="d-foot">
+      <button class="secondary" id="restoreCancel" type="button">取消</button>
+      <button id="restoreConfirm" type="button">确认：用该版替换当前草稿</button>
+    </div>
+  </dialog>
+
+  <!-- 导入采访整理包对话框 -->
+  <dialog id="bundleDialog">
+    <div class="d-head" style="background:var(--ok-bg);color:var(--ok);border-color:#bcd8c2">⇪ 预览导入采访整理包</div>
+    <div class="d-body" id="bundleBody">加载预览中…</div>
+    <div class="d-foot">
+      <button class="secondary" id="bundleCancel" type="button">取消</button>
+      <button id="bundleConfirm" type="button">确认导入整包</button>
+    </div>
+  </dialog>
+
+  <!-- 出处遮盖确认对话框 -->
+  <dialog id="redactDialog">
+    <div class="d-head" style="background:#fbeaea;color:#a33;border-color:#e0b8b8">▣ 预览出处遮盖（撤回公开展示）</div>
+    <div class="d-body" id="redactBody">加载预览中…</div>
+    <div class="d-foot">
+      <button class="secondary" id="redactCancel" type="button">取消</button>
+      <button id="redactConfirm" type="button">确认遮盖：访客视图统一显示「出处已遮盖」</button>
+    </div>
+  </dialog>
+
+  <!-- 版本原文对话框（持口令，不遮盖） -->
+  <dialog id="rawVersionDialog">
+    <div class="d-head">第 <span id="rawVersionNo"></span> 版快照原文（编辑者可见，访客看到的是遮盖视图）</div>
+    <div class="d-body" id="rawVersionBody">加载中…</div>
+    <div class="d-foot">
+      <button id="rawVersionClose" type="button" class="secondary">关闭</button>
+    </div>
+  </dialog>
+
+  <!-- 预约详情对话框（查看冻结内容 / 冲突说明） -->
+  <dialog id="scheduleDialog">
+    <div class="d-head" style="background:#eef4fb;color:#245b96;border-color:#c2d4e8">
+      ⏱ 预约 <span id="scheduleDetailNo"></span> 详情
+    </div>
+    <div class="d-body" id="scheduleBody">加载中…</div>
+    <div class="d-foot">
+      <button class="secondary" id="scheduleCancelDlg" type="button">取消预约（仅未执行）</button>
+      <button id="scheduleClose" type="button">关闭</button>
+    </div>
+  </dialog>
+
+  <!-- 路线详情对话框（编辑者原文视图，不遮盖） -->
+  <dialog id="routeDialog">
+    <div class="d-head" style="background:#eef4fb;color:#245b96;border-color:#c2d4e8">
+      ⚑ 路线 <span id="routeDetailNo"></span> 详情（编辑者原文，访客视图按遮盖规则显示）
+    </div>
+    <div class="d-body" id="routeBody">加载中…</div>
+    <div class="d-foot">
+      <button id="routeClose" type="button">关闭</button>
+    </div>
+  </dialog>
+
+  <script src="/editor.js"></script>
+</body>
+</html>

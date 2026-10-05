@@ -1,0 +1,24 @@
+services:
+  chronicle:
+    build: .
+    image: oral-chronicle:latest
+    container_name: oral-chronicle
+    ports:
+      - "3000:3000"
+    environment:
+      # 编辑者口令（务必修改！）
+      EDITOR_TOKEN: "change-me-please"
+      # 可选：写入演示草稿数据（库为空时生效）
+      SEED_DEMO: "1"
+      PORT: "3000"
+    volumes:
+      - chronicle-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/public/chronicle').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  chronicle-data:
